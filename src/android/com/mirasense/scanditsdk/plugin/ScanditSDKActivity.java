@@ -22,21 +22,27 @@ import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.os.Bundle;
+import android.provider.ContactsContract;
+import android.util.Log;
+import android.view.Display;
 import android.view.Window;
 import android.view.WindowManager;
 
-import com.mirasense.scanditsdk.LegacyPortraitScanditSDKBarcodePicker;
-import com.mirasense.scanditsdk.ScanditSDKBarcodePicker;
-import com.mirasense.scanditsdk.ScanditSDKScanSettings;
-import com.mirasense.scanditsdk.interfaces.ScanditSDK;
-import com.mirasense.scanditsdk.interfaces.ScanditSDKListener;
-import com.mirasense.scanditsdk.interfaces.ScanditSDKOverlay;
+import com.scandit.barcodepicker.OnScanListener;
+import com.scandit.barcodepicker.ScanSession;
+import com.scandit.barcodepicker.ScanSettings;
+import com.scandit.base.util.JSONParseException;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
 
 /**
  * Activity integrating the barcode scanner.
  *
  */
-public class ScanditSDKActivity extends Activity implements ScanditSDKListener {
+public class ScanditSDKActivity extends Activity implements OnScanListener, SearchBarBarcodePicker.ScanditSDKSearchBarListener {
     
     public static final int CANCEL = 0;
     public static final int SCAN = 1;
@@ -44,52 +50,87 @@ public class ScanditSDKActivity extends Activity implements ScanditSDKListener {
 
     private static ScanditSDKActivity sActiveActivity = null;
 
-    private ScanditSDK mBarcodePicker;
+    private SearchBarBarcodePicker mBarcodePicker;
     private boolean mContinuousMode = false;
+
+    private boolean mStartPaused = false;
+
+    private boolean mLegacyMode = false;
     
     
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        initializeAndStartBarcodeRecognition(getIntent().getExtras());
         super.onCreate(savedInstanceState);
+
+        JSONObject settings = null;
+        Bundle options = null;
+        Bundle overlayOptions = null;
+
+        if (getIntent().getExtras().containsKey("settings")) {
+            try {
+                settings = new JSONObject(getIntent().getExtras().getString("settings"));
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+            mLegacyMode = false;
+        } else {
+            mLegacyMode = true;
+        }
+        if (getIntent().getExtras().containsKey("options")) {
+            options = getIntent().getExtras().getBundle("options");
+        }
+        if (getIntent().getExtras().containsKey("overlayOptions")) {
+            overlayOptions = getIntent().getExtras().getBundle("overlayOptions");
+        }
+
+        initializeAndStartBarcodeRecognition(settings, options, overlayOptions);
     }
     
     @SuppressWarnings("deprecation")
-    public void initializeAndStartBarcodeRecognition(Bundle extras) {
+    public void initializeAndStartBarcodeRecognition(
+            JSONObject settings, Bundle options, Bundle overlayOptions) {
         // Switch to full screen.
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
-                             WindowManager.LayoutParams.FLAG_FULLSCREEN);
+                WindowManager.LayoutParams.FLAG_FULLSCREEN);
         requestWindowFeature(Window.FEATURE_NO_TITLE);
 
-        ScanditSDKScanSettings settings = ScanditSDKParameterParser.settingsForBundle(extras);
-
-        if (ScanditSDKBarcodePicker.canRunPortraitPicker()) {
-            ScanditSDKBarcodePicker picker = new ScanditSDKBarcodePicker(
-                    this, extras.getString(ScanditSDKParameterParser.paramAppKey), settings);
-
-            this.setContentView(picker);
-            mBarcodePicker = picker;
+        ScanSettings scanSettings;
+        if (mLegacyMode) {
+            scanSettings = LegacySettingsParamParser.getSettings(options);
         } else {
-            // Make sure the orientation is correct as the old GUI will only
-            // be displayed correctly if the activity is in landscape mode.
-            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+            try {
+                scanSettings = ScanSettings.createWithJson(settings);
+            } catch (JSONParseException e) {
+                Log.e("ScanditSDK", "Exception when creating settings");
+                e.printStackTrace();
+                scanSettings = ScanSettings.create();
+            }
+        }
+        mBarcodePicker = new SearchBarBarcodePicker(this, scanSettings);
+        mBarcodePicker.setOnScanListener(this);
 
-            LegacyPortraitScanditSDKBarcodePicker picker = new LegacyPortraitScanditSDKBarcodePicker(
-                    this, extras.getString(ScanditSDKParameterParser.paramAppKey), settings);
+        this.setContentView(mBarcodePicker);
 
-            this.setContentView(picker);
-            mBarcodePicker = picker;
+        // Set all the UI options.
+        PhonegapParamParser.updatePicker(mBarcodePicker, options, this);
+
+        if (settings == null) {
+            LegacyUIParamParser.updatePickerUI(this, mBarcodePicker, options);
+        } else {
+            UIParamParser.updatePickerUI(mBarcodePicker, overlayOptions);
+            PhonegapParamParser.updatePicker(mBarcodePicker, overlayOptions, this);
         }
 
-        ScanditSDKParameterParser.updatePickerUIFromBundle(mBarcodePicker, extras);
-
-        if (extras.containsKey(ScanditSDKParameterParser.paramContinuousMode)) {
-            mContinuousMode = extras.getBoolean(ScanditSDKParameterParser.paramContinuousMode);
+        if (options.containsKey(PhonegapParamParser.paramContinuousMode)) {
+            mContinuousMode = options.getBoolean(PhonegapParamParser.paramContinuousMode);
         }
-        
-        // Register listener, in order to be notified about relevant events
-        // (e.g. a successfully scanned bar code).
-        mBarcodePicker.getOverlayView().addListener(this);
+
+        if (options.containsKey(PhonegapParamParser.paramPaused)
+                && options.getBoolean(PhonegapParamParser.paramPaused)) {
+            mStartPaused = true;
+        } else {
+            mStartPaused = false;
+        }
     }
     
     @Override
@@ -104,7 +145,7 @@ public class ScanditSDKActivity extends Activity implements ScanditSDKListener {
     @Override
     protected void onResume() {
         // Once the activity is in the foreground again, restart scanning.
-        mBarcodePicker.startScanning();
+        mBarcodePicker.startScanning(mStartPaused);
         sActiveActivity = this;
         super.onResume();
     }
@@ -115,6 +156,7 @@ public class ScanditSDKActivity extends Activity implements ScanditSDKListener {
 
     public void resumeScanning() {
         mBarcodePicker.resumeScanning();
+        mStartPaused = false;
     }
 
     public void stopScanning() {
@@ -123,71 +165,72 @@ public class ScanditSDKActivity extends Activity implements ScanditSDKListener {
 
     public void startScanning() {
         mBarcodePicker.startScanning();
+        mStartPaused = false;
     }
     
     public void switchTorchOn(boolean enabled) {
         mBarcodePicker.switchTorchOn(enabled);
     }
-    /**
-     * Called when the user canceled the bar code scanning.
-     */
+
     public void didCancel() {
-        finishView();
-        
+        mBarcodePicker.stopScanning();
+
         setResult(CANCEL);
         finish();
     }
-    
-    /**
-     * Called when a bar code has been scanned.
-     *
-     * @param barcode Scanned bar code content.
-     * @param symbology Scanned bar code symbology .
-     */
-    public void didScanBarcode(String barcode, String symbology) {
-        if (!mContinuousMode) {
-            finishView();
-            
-            Intent intent = new Intent();
-            intent.putExtra("barcode", barcode.trim());
-            intent.putExtra("symbology", symbology);
-            setResult(SCAN, intent);
-            finish();
-        } else {
-            Bundle bundle = new Bundle();
-            bundle.putString("barcode", barcode.trim());
-            bundle.putString("symbology", symbology);
-            ScanditSDKResultRelay.onResult(bundle);
+
+    @Override
+    public void didScan(ScanSession session) {
+        if (session.getNewlyRecognizedCodes().size() > 0) {
+            if (!mContinuousMode) {
+                session.stopScanning();
+
+                Intent intent = new Intent();
+                if (mLegacyMode) {
+                    intent.putExtra("barcode", session.getNewlyRecognizedCodes().get(0).getData());
+                    intent.putExtra("symbology",
+                            session.getNewlyRecognizedCodes().get(0).getSymbologyName());
+                } else {
+                    intent.putExtra("jsonString", ScanditSDKResultRelay.jsonForSession(session).toString());
+                }
+                setResult(SCAN, intent);
+                finish();
+            } else {
+                Bundle bundle = new Bundle();
+                if (mLegacyMode) {
+                    bundle.putString("barcode", session.getNewlyRecognizedCodes().get(0).getData());
+                    bundle.putString("symbology",
+                            session.getNewlyRecognizedCodes().get(0).getSymbologyName());
+                } else {
+                    bundle.putString("jsonString", ScanditSDKResultRelay.jsonForSession(session).toString());
+                }
+                ScanditSDKResultRelay.onResult(bundle);
+            }
         }
     }
-    
-    /** 
-     * Called when the user entered a bar code manually.
-     * 
-     * @param entry The information entered by the user.
-     */
-    public void didManualSearch(String entry) {
+
+    @Override
+    public void didEnter(String entry) {
         if (!mContinuousMode) {
             Intent intent = new Intent();
-            intent.putExtra("barcode", entry.trim());
-            intent.putExtra("symbology", "UNKNOWN");
+            if (mLegacyMode) {
+                intent.putExtra("barcode", entry.trim());
+                intent.putExtra("symbology", "UNKNOWN");
+            } else {
+                intent.putExtra("string", entry.trim());
+            }
             setResult(MANUAL, intent);
             finish();
         } else {
             Bundle bundle = new Bundle();
-            bundle.putString("barcode", entry.trim());
-            bundle.putString("symbology", "UNKNOWN");
+            if (mLegacyMode) {
+                bundle.putString("barcode", entry.trim());
+                bundle.putString("symbology", "UNKNOWN");
+            } else {
+                bundle.putString("string", entry.trim());
+            }
             ScanditSDKResultRelay.onResult(bundle);
         }
-    }
-    
-    /**
-     * Called before this activity is finished to improve on the transitioning
-     * time.
-     */
-    private void finishView() {
-        mBarcodePicker.stopScanning();
-        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
     }
     
     @Override
