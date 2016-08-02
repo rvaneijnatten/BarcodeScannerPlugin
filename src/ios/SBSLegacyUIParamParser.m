@@ -1,11 +1,14 @@
+//  Copyright 2016 Scandit AG
 //
-//  SBSLegacyUIParamParser.m
-//  Hello World
+//  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+// in compliance with the License. You may obtain a copy of the License at
 //
-//  Created by Moritz Hartmeier on 02/12/15.
+//  http://www.apache.org/licenses/LICENSE-2.0
 //
-//
-
+//  Unless required by applicable law or agreed to in writing, software distributed under the
+//  License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+//  express or implied. See the License for the specific language governing permissions and
+//  limitations under the License.
 #import "SBSLegacyUIParamParser.h"
 
 #import "SBSPhonegapParamParser.h"
@@ -108,6 +111,16 @@
                                                             height:buttonRect.size.height];
     }
     
+    NSObject *guiStyle = [options objectForKey:[SBSUIParamParser paramGuiStyle]];
+    if (guiStyle && [guiStyle isKindOfClass:[NSString class]]) {
+        NSString *guiStyleString = (NSString *)guiStyle;
+        if ([guiStyleString isEqualToString:[self paramGuiStyleLaser]]) {
+            picker.overlayController.guiStyle = SBSGuiStyleLaser;
+        } else {
+            picker.overlayController.guiStyle = SBSGuiStyleDefault;
+        }
+    }
+    
     NSObject *color1 = [options objectForKey:[SBSUIParamParser paramViewfinderColor]];
     if (color1 && [color1 isKindOfClass:[NSString class]]) {
         NSString *color1String = (NSString *)color1;
@@ -153,18 +166,10 @@
         }
     }
     
-    NSObject *guiStyle = [options objectForKey:[SBSUIParamParser paramGuiStyle]];
-    if (guiStyle && [guiStyle isKindOfClass:[NSString class]]) {
-        NSString *guiStyleString = (NSString *)guiStyle;
-        if ([guiStyleString isEqualToString:[self paramGuiStyleLaser]]) {
-            picker.overlayController.guiStyle = SBSGuiStyleLaser;
-        } else {
-            picker.overlayController.guiStyle = SBSGuiStyleDefault;
-        }
-    }
-    
     if (![options objectForKey:[SBSPhonegapParamParser paramPortraitMargins]]
-        && ![options objectForKey:[SBSPhonegapParamParser paramLandscapeMargins]]) {
+            && ![options objectForKey:[SBSPhonegapParamParser paramLandscapeMargins]]
+            && ![options objectForKey:[SBSPhonegapParamParser paramPortraitConstraints]]
+            && ![options objectForKey:[SBSPhonegapParamParser paramLandscapeConstraints]]) {
         // Show the toolbar that contains a cancel button.
         [picker.overlayController showToolBar:YES];
     }

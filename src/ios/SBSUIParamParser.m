@@ -1,11 +1,14 @@
+//  Copyright 2016 Scandit AG
 //
-//  SBSUIParamParser.m
-//  Hello World
+//  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+// in compliance with the License. You may obtain a copy of the License at
 //
-//  Created by Moritz Hartmeier on 02/12/15.
+//  http://www.apache.org/licenses/LICENSE-2.0
 //
-//
-
+//  Unless required by applicable law or agreed to in writing, software distributed under the
+//  License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+//  express or implied. See the License for the specific language governing permissions and
+//  limitations under the License.
 #import "SBSUIParamParser.h"
 
 #import "SBSPhonegapParamParser.h"
@@ -92,13 +95,15 @@
     if (torchButtonMarginsAndSize) {
         if ([torchButtonMarginsAndSize isKindOfClass:[NSArray class]]) {
             NSArray *marginsAndSizeArray = (NSArray *)torchButtonMarginsAndSize;
-            if ([marginsAndSizeArray count] == 4 && [self array:marginsAndSizeArray
-                                      onlyContainObjectsOfClass:[NSNumber class]]) {
+            if ([marginsAndSizeArray count] == 4 
+                            && ([self array:marginsAndSizeArray onlyContainObjectsOfClass:[NSNumber class]]
+                                ||[self array:marginsAndSizeArray onlyContainObjectsOfClass:[NSString class]] )) {
                 [picker.overlayController
-                 setTorchButtonLeftMargin:[marginsAndSizeArray[0] floatValue]
-                 topMargin:[marginsAndSizeArray[1] floatValue]
-                 width:[marginsAndSizeArray[2] floatValue]
-                 height:[marginsAndSizeArray[3] floatValue]];
+                        setTorchButtonLeftMargin:[self getSize: marginsAndSizeArray[0] relativeTo:0]
+                                       topMargin:[self getSize: marginsAndSizeArray[1] relativeTo:0]
+                                           width:[self getSize: marginsAndSizeArray[2] relativeTo:0]
+                                          height:[self getSize: marginsAndSizeArray[3] relativeTo:0]
+                                          ];
             }
         } else {
             NSLog(@"SBS Plugin: failed to parse torch button margins and size - wrong type");
@@ -159,12 +164,15 @@
     if (cameraSwitchButtonMarginsAndSize) {
         if ([cameraSwitchButtonMarginsAndSize isKindOfClass:[NSArray class]]) {
             NSArray *marginsAndSizeArray = (NSArray *)cameraSwitchButtonMarginsAndSize;
-            if ([marginsAndSizeArray count] == 4) {
+            if ([marginsAndSizeArray count] == 4 
+                            && ([self array:marginsAndSizeArray onlyContainObjectsOfClass:[NSNumber class]]
+                                ||[self array:marginsAndSizeArray onlyContainObjectsOfClass:[NSString class]] )) {
                 [picker.overlayController
-                 setCameraSwitchButtonRightMargin:[marginsAndSizeArray[0] floatValue]
-                 topMargin:[marginsAndSizeArray[1] floatValue]
-                 width:[marginsAndSizeArray[2] floatValue]
-                 height:[marginsAndSizeArray[3] floatValue]];
+                        setCameraSwitchButtonRightMargin:[self getSize: marginsAndSizeArray[0] relativeTo:0]
+                                               topMargin:[self getSize: marginsAndSizeArray[1] relativeTo:0]
+                                                   width:[self getSize: marginsAndSizeArray[2] relativeTo:0]
+                                                  height:[self getSize: marginsAndSizeArray[3] relativeTo:0]
+                                                ];
             }
         } else {
             NSLog(@"SBS Plugin: failed to parse camera switch button margins and size - wrong type");
@@ -197,6 +205,27 @@
             hint = (NSString *) cameraFrontAccHint;
         }
         [picker.overlayController setCameraSwitchButtonFrontAccessibilityLabel:label hint:hint];
+    }
+    
+    NSObject *guiStyle = [options objectForKey:[self paramGuiStyle]];
+    if (guiStyle) {
+        if ([guiStyle isKindOfClass:[NSNumber class]]) {
+            switch ([(NSNumber *)guiStyle integerValue]) {
+                case 0:
+                    picker.overlayController.guiStyle = SBSGuiStyleDefault;
+                    break;
+                    
+                case 1:
+                    picker.overlayController.guiStyle = SBSGuiStyleLaser;
+                    break;
+                    
+                case 2:
+                    picker.overlayController.guiStyle = SBSGuiStyleNone;
+                    break;
+            }
+        } else {
+            NSLog(@"SBS Plugin: failed to parse gui style - wrong type");
+        }
     }
     
     NSObject *viewfinderSize = [options objectForKey:[self paramViewfinderDimension]];
@@ -275,27 +304,6 @@
         }
     }
     
-    NSObject *guiStyle = [options objectForKey:[self paramGuiStyle]];
-    if (guiStyle) {
-        if ([guiStyle isKindOfClass:[NSNumber class]]) {
-            switch ([(NSNumber *)guiStyle integerValue]) {
-                case 0:
-                picker.overlayController.guiStyle = SBSGuiStyleDefault;
-                break;
-                
-                case 1:
-                picker.overlayController.guiStyle = SBSGuiStyleLaser;
-                break;
-                
-                case 2:
-                picker.overlayController.guiStyle = SBSGuiStyleNone;
-                break;
-            }
-        } else {
-            NSLog(@"SBS Plugin: failed to parse gui style - wrong type");
-        }
-    }
-    
     NSObject *properties = [options objectForKey:[self paramProperties]];
     if ([properties isKindOfClass:[NSDictionary class]]) {
         NSDictionary *propDict = (NSDictionary *)properties;
@@ -323,6 +331,29 @@
         }
     }
     return YES;
+}
+
++ (NSNumber *)getSizeOrNull:(NSObject *)obj relativeTo:(int)max {
+    if (obj) {
+        return [NSNumber numberWithFloat:[SBSUIParamParser getSize:obj relativeTo:max]];
+    } else {
+        return nil;
+    }
+}
+
++ (float)getSize:(NSObject *)obj relativeTo:(int)max {
+    if ([obj isKindOfClass:[NSNumber class]]) {
+        return [(NSNumber *) obj floatValue];
+    } else if ([obj isKindOfClass:[NSString class]]) {
+        NSString* str = (NSString *) obj;
+        if ([[str substringFromIndex: [str length] - 1] isEqualToString:@"%"]) {
+            return [[str substringToIndex: [str length] - 1] floatValue] * max / 100.;
+        } else {
+            return [str floatValue];
+        }
+    } else {
+        return 0.;
+    }
 }
 
 @end

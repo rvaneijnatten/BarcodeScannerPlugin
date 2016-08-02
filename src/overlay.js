@@ -1,6 +1,6 @@
 
-function ScanOverlay(picker) {
-    this.picker = picker;
+function ScanOverlay() {
+    this.pickerIsShown = false;
     this.properties = {};
 }
 
@@ -120,13 +120,18 @@ ScanOverlay.prototype.setMaxSearchBarBarcodeLength = function(length) {
 	this.updateOverlayIfExists();
 }
 
+ScanOverlay.prototype.setToolBarButtonCaption = function(caption) {
+	this.toolBarButtonCaption = caption;
+	this.updateOverlayIfExists();
+}
+
 ScanOverlay.prototype.setProperty = function(key, value) {
     this.properties[key] = value;
 	this.updateOverlayIfExists();
 }
 
 ScanOverlay.prototype.updateOverlayIfExists = function() {
-	if (this.picker.isShown) {
+	if (this.pickerIsShown) {
 		cordova.exec(null, null, "ScanditSDK", "updateOverlay", [this]);
 	}
 }

@@ -1,7 +1,20 @@
+//  Copyright 2016 Scandit AG
+//
+//  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+//  in compliance with the License. You may obtain a copy of the License at
+//
+//  http://www.apache.org/licenses/LICENSE-2.0
+//
+//  Unless required by applicable law or agreed to in writing, software distributed under the
+//  License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+//  express or implied. See the License for the specific language governing permissions and
+//  limitations under the License.
+
 package com.mirasense.scanditsdk.plugin;
 
 import android.app.Activity;
 import android.os.Bundle;
+import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.Display;
 
@@ -9,7 +22,9 @@ import com.scandit.barcodepicker.BarcodePicker;
 import com.scandit.barcodepicker.ScanOverlay;
 
 import java.io.Serializable;
-import java.util.LinkedList;
+import java.lang.Math;
+import java.lang.NumberFormatException;
+import java.util.List;
 
 /**
  * Created by mo on 14/12/15.
@@ -45,6 +60,9 @@ public class UIParamParser {
 
 
     public static void updatePickerUI(BarcodePicker picker, Bundle bundle) {
+        if (picker == null || bundle == null) {
+            return;
+        }
         if (bundle.containsKey(paramBeep)) {
             picker.getOverlayView().setBeepEnabled(bundle.getBoolean(paramBeep));
         }
@@ -68,11 +86,14 @@ public class UIParamParser {
         }
 
         if (bundleContainsListKey(bundle, paramTorchButtonMarginsAndSize)) {
-            LinkedList<Object> marginsAndSize = (LinkedList<Object>)bundle.getSerializable(paramTorchButtonMarginsAndSize);
-            if (checkClassOfListObjects(marginsAndSize, Integer.class) && marginsAndSize.size() == 4) {
+            List<Object> marginsAndSize = (List<Object>)bundle.getSerializable(paramTorchButtonMarginsAndSize);
+            if ((checkClassOfListObjects(marginsAndSize, Integer.class) || checkClassOfListObjects(marginsAndSize, String.class))
+                            && marginsAndSize.size() == 4) {
                 picker.getOverlayView().setTorchButtonMarginsAndSize(
-                        (Integer)marginsAndSize.get(0), (Integer)marginsAndSize.get(1),
-                        (Integer)marginsAndSize.get(2), (Integer)marginsAndSize.get(3));
+                        getSize(marginsAndSize.get(0), 0),
+                        getSize(marginsAndSize.get(1), 0),
+                        getSize(marginsAndSize.get(2), 0),
+                        getSize(marginsAndSize.get(3), 0));
             } else {
                 Log.e("ScanditSDK", "Failed to parse torch button margins and size - wrong type");
             }
@@ -96,11 +117,14 @@ public class UIParamParser {
         }
 
         if (bundleContainsListKey(bundle, paramCameraSwitchButtonMarginsAndSize)) {
-            LinkedList<Object> marginsAndSize = (LinkedList<Object>)bundle.getSerializable(paramCameraSwitchButtonMarginsAndSize);
-            if (checkClassOfListObjects(marginsAndSize, Integer.class) && marginsAndSize.size() == 4) {
+            List<Object> marginsAndSize = (List<Object>)bundle.getSerializable(paramCameraSwitchButtonMarginsAndSize);
+            if ((checkClassOfListObjects(marginsAndSize, Integer.class) || checkClassOfListObjects(marginsAndSize, String.class))
+                            && marginsAndSize.size() == 4) {
                 picker.getOverlayView().setCameraSwitchButtonMarginsAndSize(
-                        (Integer) marginsAndSize.get(0), (Integer) marginsAndSize.get(1),
-                        (Integer) marginsAndSize.get(2), (Integer) marginsAndSize.get(3));
+                        getSize(marginsAndSize.get(0), 0),
+                        getSize(marginsAndSize.get(1), 0),
+                        getSize(marginsAndSize.get(2), 0),
+                        getSize(marginsAndSize.get(3), 0));
             } else {
                 Log.e("ScanditSDK", "Failed to parse camera switch button margins and size - wrong type");
             }
@@ -117,7 +141,7 @@ public class UIParamParser {
         }
 
         if (bundleContainsListKey(bundle, paramViewfinderDimension)) {
-            LinkedList<Object> viewfinderDimension = (LinkedList<Object>)bundle.getSerializable(paramViewfinderDimension);
+            List<Object> viewfinderDimension = (List<Object>)bundle.getSerializable(paramViewfinderDimension);
             if (checkClassOfListObjects(viewfinderDimension, Float.class)
                     && viewfinderDimension.size() == 4) {
                 picker.getOverlayView().setViewfinderDimension(
@@ -179,7 +203,7 @@ public class UIParamParser {
         if (bundleContainsBundleKey(bundle, paramProperties)) {
             Bundle properties = bundle.getBundle(paramProperties);
             for (String key : properties.keySet()) {
-                //picker.getOverlayView().setProperty(key, properties.get);
+                picker.getOverlayView().setProperty(key, properties.get(key));
             }
         }
     }
@@ -198,7 +222,7 @@ public class UIParamParser {
     public static boolean bundleContainsListKey(Bundle bundle, String key) {
         if (bundle.containsKey(key)) {
             Serializable serial = bundle.getSerializable(key);
-            if (serial != null && serial instanceof LinkedList) {
+            if (serial != null && serial instanceof List) {
                 return true;
             } else {
                 Log.e("ScanditSDK", "Failed to parse " + key + " - needs to be array");
@@ -218,13 +242,52 @@ public class UIParamParser {
         return false;
     }
 
-    public static boolean checkClassOfListObjects(LinkedList<Object> list, Class<?> aClass) {
+    public static boolean checkClassOfListObjects(List<Object> list, Class<?> aClass) {
         for (Object obj : list) {
             if (!aClass.isInstance(obj)) {
-                Log.e("ScanditSDK", "array contains wrong class - " + obj.getClass().getName());
                 return false;
             }
         }
         return true;
+    }
+
+    public static Integer getSize(Bundle bundle, String key, int max) {
+        if (bundle.containsKey(key)) {
+            return getSize(bundle.get(key), max);
+        } else {
+            return null;
+        }
+    }
+
+    // Converts % to pt if string ends with '%'
+    public static Integer getSize(Object obj, int max) {
+        if (obj instanceof Number) {
+            return ((Number) obj).intValue();
+        } else if (obj.getClass().equals(String.class)) {
+            String str = (String) obj;
+            if (str.substring(Math.max(str.length() - 1, 0)).equals("%")) {
+                try {
+                    float percent = Float.parseFloat(str.substring(0, str.length() - 1));
+                    if (percent < 0f || 100f < percent) {
+                        Log.e("ScanditSDK", "Percentage value is not valid: " + percent + ", using 0%");
+                        return 0;
+                    }
+                    return Math.round(percent * max / 100f);
+                } catch (NumberFormatException e) {
+                    Log.e("ScanditSDK", "Can not parse size value of string " + str + " - returning 0");
+                    return 0;
+                }
+            } else {
+                try {
+                    return Integer.parseInt(str);
+                } catch (NumberFormatException e) {
+                    Log.e("ScanditSDK", "Can not parse size value of string " + str + " - returning 0");
+                    return 0;
+                }
+            }
+        } else {
+            Log.e("ScanditSDK", "Can not parse size value - returning 0");
+            return 0;
+        }
     }
 }
