@@ -1,6 +1,6 @@
 {
   "name": "com.rvaneijnatten.scanditsdk.plugin",
-  "version": "4.15.1",
+  "version": "4.15.2",
   "description": "Scandit PhoneGap plugin",
   "main": "index.js",
   "scripts": {
