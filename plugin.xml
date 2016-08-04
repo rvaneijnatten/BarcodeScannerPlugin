@@ -1,5 +1,5 @@
 <?xml version="1.0" ?> 
-<plugin id="com.rvaneijnatten.scanditsdk.plugin" version="0.0.6" xmlns="http://www.phonegap.com/ns/plugins/1.0" xmlns:android="http://schemas.android.com/apk/res/android">        
+<plugin id="com.rvaneijnatten.scanditsdk.plugin" version="0.0.7" xmlns="http://www.phonegap.com/ns/plugins/1.0" xmlns:android="http://schemas.android.com/apk/res/android">        
 	<name>ScanditBarcodeScanner</name>
 	<js-module src="src/barcode.js" name="Barcode">
 		<clobbers target="Scandit.Barcode" />
@@ -53,7 +53,7 @@
 		  </config-file>      
 
 		  <!-- Resource Bundle for Scandit SDK -->
-		  <resource-file src="src/ios/scanditsdk-community-ios_4.0.0/ScanditBarcodeScanner.bundle"/>	  
+		  <resource-file src="src/ios/sbs-ios_4.15.0/ScanditBarcodeScanner.bundle"/>	  
 		  <!-- Scandit SDK Cordova Plugin Source for iOS -->
 		  <header-file src="src/ios/ScanditSDK.h"/>
 		  <source-file src="src/ios/ScanditSDK.mm"/>
@@ -80,7 +80,7 @@
 
 		  
 		  <!-- Frameworks needed by Scandit SDK for iOS -->
-		  <framework src="src/ios/scanditsdk-community-ios_4.0.0/ScanditBarcodeScanner.framework" custom="true"/>
+		  <framework src="src/ios/sbs-ios_4.15.0/ScanditBarcodeScanner.framework" custom="true"/>
 		  <framework src="OpenGLES.framework"/>
 		  <framework src="AudioToolbox.framework"/>
 		  <framework src="AVFoundation.framework"/>      
@@ -118,7 +118,7 @@
 		<!-- copy Scandit SDK libs -->
 		 <framework src="src/android/build.gradle" custom="true" type="gradleReference" />
 		<!-- copy Scandit SDK resources (images, beep) -->      
-        <resource-file src="src/android/scanditsdk-community-android_4.0.0/ScanditBarcodeScanner.aar" target="libs/ScanditBarcodeScanner.aar" />
+        <resource-file src="src/android/sbs-android_4.15.0/ScanditBarcodeScanner.aar" target="libs/ScanditBarcodeScanner.aar" />
         <!-- add plugin source code -->
         <source-file src="src/android/com/mirasense/scanditsdk/plugin/BarcodePickerWithSearchBar.java" target-dir="src/com/mirasense/scanditsdk/plugin" />
         <source-file src="src/android/com/mirasense/scanditsdk/plugin/FullScreenPickerActivity.java" target-dir="src/com/mirasense/scanditsdk/plugin" />
