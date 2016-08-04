@@ -1,7 +1,7 @@
-var Rect = cordova.require("com.mirasense.scanditsdk.plugin.Rect");
-var Point = cordova.require("com.mirasense.scanditsdk.plugin.Point");
-var SymbologySettings = cordova.require("com.mirasense.scanditsdk.plugin.SymbologySettings");
-var Barcode = cordova.require("com.mirasense.scanditsdk.plugin.Barcode");
+var Rect = cordova.require("com.rvaneijnatten.scanditsdk.plugin.Rect");
+var Point = cordova.require("com.rvaneijnatten.scanditsdk.plugin.Point");
+var SymbologySettings = cordova.require("com.rvaneijnatten.scanditsdk.plugin.SymbologySettings");
+var Barcode = cordova.require("com.rvaneijnatten.scanditsdk.plugin.Barcode");
 
 
 function ScanSettings() {

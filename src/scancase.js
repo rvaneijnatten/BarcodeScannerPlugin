@@ -1,7 +1,7 @@
 
-var ScanSettings = cordova.require("com.mirasense.scanditsdk.plugin.ScanSettings");
-var ScanSession = cordova.require("com.mirasense.scanditsdk.plugin.ScanSession");
-var Barcode = cordova.require("com.mirasense.scanditsdk.plugin.Barcode");
+var ScanSettings = cordova.require("com.rvaneijnatten.scanditsdk.plugin.ScanSettings");
+var ScanSession = cordova.require("com.rvaneijnatten.scanditsdk.plugin.ScanSession");
+var Barcode = cordova.require("com.rvaneijnatten.scanditsdk.plugin.Barcode");
 
 function ScanCase(scanSettings, callbacks) {
    this.callbacks = callbacks;
